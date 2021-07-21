@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/julienschmidt/httprouter"
+	"io"
 	"net/http"
 	"strconv"
 )
@@ -36,4 +38,31 @@ func (app *application) readIDParam(r *http.Request) (int64, error) {
 		return 0, errors.New("invalid id parameter")
 	}
 	return id, err
+}
+
+func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst interface{}) error {
+	err := json.NewDecoder(r.Body).Decode(dst)
+
+	if err != nil {
+		var syntaxError *json.SyntaxError
+		var unmarshalTypeError *json.UnmarshalTypeError
+		var invalidUnmarshalError *json.InvalidUnmarshalError
+
+		switch {
+		case errors.As(err, &syntaxError):
+			return fmt.Errorf("body contains badly-formed JSON (at character %d", syntaxError.Offset)
+		case errors.Is(err, io.ErrUnexpectedEOF):
+			return errors.New("body contains badly formed JSON")
+		case errors.As(err, &unmarshalTypeError):
+			if unmarshalTypeError.Field != "" {
+				return fmt.Errorf("body contains incorrect JSON type for the field %q", unmarshalTypeError.Field)
+			}
+			return fmt.Errorf("body contains incorrect JSON type (at the character %d", unmarshalTypeError.Offset)
+		case errors.As(err, &invalidUnmarshalError):
+			panic(err)
+		default:
+			return err
+		}
+	}
+	return nil
 }
