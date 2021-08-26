@@ -52,3 +52,8 @@ func (app *application) editConflictResponse(w http.ResponseWriter, r *http.Requ
 	message := "unable to update the record dut to the an edit conflict, please try again"
 	app.errResponse(w, r, http.StatusConflict, message)
 }
+
+func (app *application) rateLimitExceededResponse(w http.ResponseWriter, r *http.Request) {
+	message := "rate limit exceeded"
+	app.errResponse(w, r, http.StatusTooManyRequests, message)
+}
